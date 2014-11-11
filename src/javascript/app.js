@@ -91,7 +91,11 @@ Ext.define('CustomApp', {
         
         var target_display_string = "Not yet copied";
         if ( this.target_defect ) {
-            target_display_string = this.target_defect.get('FormattedID') + ": " + this.target_defect.get('Name');
+            var target_url = Rally.nav.Manager.getDetailUrl(this.target_defect);
+            var target_id = this.target_defect.get('FormattedID');
+            var target_name = this.target_defect.get('Name');
+            
+            target_display_string = "<a href='" + target_url + "'>" + target_id + ":" + target_name + "</a>";
         }
         
         container.add({
@@ -159,6 +163,7 @@ Ext.define('CustomApp', {
                                     if(operation.wasSuccessful()) {
                                         this.logger.log("Created ", result.get('FormattedID'), result.get('ObjectID'));
                                         this.target_defect = result;
+                                        
                                         this.setLoading(false);
                                         this._updateSelectionDisplay();
                                     }
