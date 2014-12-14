@@ -46,6 +46,9 @@ Ext.define('CustomApp', {
             artifactTypes: ['defect'],
             autoShow: true,
             title: 'Choose Defect',
+            storeConfig: {
+                fetch: ['Notes']
+            },
             listeners: {
                 artifactChosen: function(selectedRecord){
                     this.source_defect = selectedRecord;
@@ -126,11 +129,30 @@ Ext.define('CustomApp', {
         });
         
         if ( this.source_defect && this.target_project ) {
-            this._addNotesBox();
+            this._addNotesBox(this.source_defect);
         }
     },
-    _addNotesBox: function() {
+    _addNotesBox: function(source_defect) {
         this.down('#input_box').removeAll();
+        
+        this.down('#input_box').add({
+            xtype:'container',
+            margin: 10,
+            itemId:'field_box'
+        });
+        
+        this.down('#field_box').add({
+            xtype:'container',
+            html:'Notes to Place on Target Defect'
+        });
+        
+        var notes = this._constructTargetNotes(source_defect);
+        
+        this.down('#field_box').add({
+            itemId:'notes_field',
+            xtype:'rallyrichtexteditor',
+            value: notes
+        });
         
         this.down('#input_box').add({
             xtype:'rallybutton',
@@ -145,9 +167,18 @@ Ext.define('CustomApp', {
             }
         });
     },
+    _constructTargetNotes:function(source_defect){
+        var notes = source_defect.get('Notes');
+        var url = Rally.nav.Manager.getDetailUrl(source_defect);
+        var link = "<a href='" + url + "'>Original Defect: " + source_defect.get('FormattedID') + "</a>";
+        
+        return link + "<br/>" + notes;
+    },
     _copyDefect: function(defect_record, workspace_hash, project_hash ) {
         this.setLoading("Creating new defect...");
         this._logToScreen("Beginning copy");
+        this.logger.log("Notes value: ", this.down('#notes_field').getValue());
+        this.logger.log("Notes submit data: ", this.down('#notes_field').getSubmitData());
         
         this.logger.log("Copying ", defect_record, " to ", workspace_hash, project_hash);
         // go get the full copy of the existing record, then clean it of unnecessary fields and
@@ -163,6 +194,7 @@ Ext.define('CustomApp', {
                             var target_defect_hash = this._getHashFromRecord(full_source_defect);
                             target_defect_hash.Workspace = workspace_hash;
                             target_defect_hash.Project = project_hash;
+                            target_defect_hash.Notes = this.down('#notes_field').getValue();
                             
                             var new_defect = Ext.create(model, target_defect_hash);
                             new_defect.save({
