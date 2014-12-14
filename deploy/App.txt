@@ -3,11 +3,11 @@
 <head>
     <title>Defect Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Nov 11 2014 13:56:44 GMT-0800 (PST) -->
+    <!--  Build Date: Sun Dec 14 2014 12:00:45 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Nov 11 2014 13:56:44 GMT-0800 (PST)";
-        var CHECKSUM = 4813336188;
+        var APP_BUILD_DATE = "Sun Dec 14 2014 12:00:45 GMT-0800 (PST)";
+        var CHECKSUM = 6272507619;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -285,10 +285,14 @@ Ext.define('CustomApp', {
     target_workspace: null,
     target_project: null,
     target_defect: null,
+    fields_to_replace: [],
     items: [
         {xtype:'container', itemId:'button_box', defaults: {margin: 5} },
         {xtype:'container', itemId:'display_box', defaults: {margin: 5} },
         {xtype:'container', itemId:'input_box', defaults: {margin: 5} },
+        {xtype:'container', itemId:'log_box', defaults: {margin: 10}, items: [
+            { xtype:'container', itemId: 'log_title', html: 'Log', margin: 5 }
+        ]},
         {xtype:'tsinfolink'}
     ],
     launch: function() {
@@ -345,6 +349,9 @@ Ext.define('CustomApp', {
                 }
              }
          });
+    },
+    _logToScreen: function(msg) {
+        this.down('#log_box').add({xtype:'container',html:" -- " + msg});
     },
     _updateSelectionDisplay: function() {
         var container = this.down('#display_box');
@@ -411,6 +418,7 @@ Ext.define('CustomApp', {
             listeners: {
                 scope: this,
                 click: function() {
+                    this.fields_to_replace = [];
                     this._copyDefect(this.source_defect, this.target_workspace, this.target_project.getData());
                 }
             }
@@ -418,6 +426,7 @@ Ext.define('CustomApp', {
     },
     _copyDefect: function(defect_record, workspace_hash, project_hash ) {
         this.setLoading("Creating new defect...");
+        this._logToScreen("Beginning copy");
         
         this.logger.log("Copying ", defect_record, " to ", workspace_hash, project_hash);
         // go get the full copy of the existing record, then clean it of unnecessary fields and
@@ -440,11 +449,21 @@ Ext.define('CustomApp', {
                                 scope: this,
                                 callback: function(result, operation) {
                                     if(operation.wasSuccessful()) {
+                                        this._logToScreen("Copy successful");
                                         this.logger.log("Created ", result.get('FormattedID'), result.get('ObjectID'));
                                         this.target_defect = result;
-                                        
+                                                                                
                                         this.setLoading(false);
                                         this._updateSelectionDisplay();
+                                        this.down('#copy_button').setDisabled(true);
+                                    } else {
+                                        this._logToScreen("Received an error");
+                                        this.logger.log("ERROR:", operation);
+                                        
+                                        if ( operation.error && operation.error.errors ) {
+                                            var errors = operation.error.errors;
+                                            this._processErrors(errors, defect_record, workspace_hash, project_hash);
+                                        }
                                     }
                                 }
                             });
@@ -453,6 +472,35 @@ Ext.define('CustomApp', {
                 });
             }
         });
+        
+    },
+    _processErrors:function(errors, defect_record, workspace_hash, project_hash){
+        var retry = false;
+        Ext.Array.each(errors,function(error){
+            this._logToScreen( error );
+            if ( /Owner cannot be set/.test(error) ) {
+                retry = true;
+                this._logToScreen("NOTE: Setting Owner to blank");
+                this.fields_to_replace.push("Owner","");
+            }
+            if ( /"Priority" must be a string/.test(error) ) {
+                retry = true;
+                this._logToScreen("NOTE: Setting Priority to blank");
+                this.fields_to_replace.push("Priority","");
+            }
+            if ( /"Severity" must be a string/.test(error) ) {
+                retry = true;
+                this._logToScreen("NOTE: Setting Severity to blank");
+                this.fields_to_replace.push("Severity","");
+            }
+        },this);
+        if ( retry ) {
+            this._logToScreen("Trying to copy again");
+            this._copyDefect(defect_record, workspace_hash, project_hash );
+        } else {
+            alert("cannot copy defect");
+            this.setLoading(false);
+        }
         
     },
     _getHashFromRecord: function(record) {
@@ -464,6 +512,10 @@ Ext.define('CustomApp', {
                 'Milestones', 'RevisionHistory','TestCase','TestCaseResult','TestCaseStatus','TestCases'];
         Ext.Array.each(fields_to_remove,function(field_to_remove){
             record_data[field_to_remove] = null;
+        });
+        
+        Ext.Array.each(this.fields_to_replace,function(field_to_replace) {
+            delete record_data[field_to_replace];
         });
         
         return record_data;
