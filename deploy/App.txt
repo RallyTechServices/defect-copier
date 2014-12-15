@@ -3,11 +3,11 @@
 <head>
     <title>Defect Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Dec 14 2014 16:43:05 GMT-0800 (PST) -->
+    <!--  Build Date: Sun Dec 14 2014 18:45:55 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Dec 14 2014 16:43:05 GMT-0800 (PST)";
-        var CHECKSUM = 13560646693;
+        var APP_BUILD_DATE = "Sun Dec 14 2014 18:45:55 GMT-0800 (PST)";
+        var CHECKSUM = 14729734815;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -286,12 +286,15 @@ Ext.define('CustomApp', {
     target_project: null,
     target_defect: null,
     fields_to_replace: [],
+    new_owner: null,
     items: [
         {xtype:'container', itemId:'button_box', defaults: {margin: 5} },
-        {xtype:'container', itemId:'display_box', defaults: {margin: 5} },
-        {xtype:'container', itemId:'input_box', defaults: {margin: 5} },
-        {xtype:'container', itemId:'log_box', defaults: {margin: 10}, items: [
-            { xtype:'container', itemId: 'log_title', html: 'Log', margin: 5 }
+        {xtype:'container', layout: { type:'hbox' }, defaults: {margin: 25},  items: [
+            {xtype:'container', itemId:'display_box', defaults: {margin: 5} },
+            {xtype:'container', itemId:'input_box', height: 300, defaults: {margin: 5} }
+        ]},
+        {xtype:'container', itemId:'log_box', defaults: {margin: 10}, height: 200, items: [
+            { xtype:'container', itemId: 'log_title', html: '<strong>Log</strong>', margin: 5 }
         ]},
         {xtype:'tsinfolink'}
     ],
@@ -412,17 +415,34 @@ Ext.define('CustomApp', {
         }
     },
     _addNotesBox: function(source_defect) {
+        this.new_owner = null;
         this.down('#input_box').removeAll();
         
         this.down('#input_box').add({
             xtype:'container',
-            margin: 10,
             itemId:'field_box'
         });
         
         this.down('#field_box').add({
             xtype:'container',
-            html:'Notes to Place on Target Defect'
+            html:'<strong>Owner to Place on Target Defect</strong>'
+        });
+        
+        this.down('#field_box').add({
+            xtype: 'rallyusersearchcombobox',
+            itemId: 'owner_field',
+            project: this.target_project.get('_ref'),
+            listeners: {
+                scope: this,
+                change: function( user_box ) {
+                    this.new_owner = user_box.getRecord();
+                }
+            }
+        });
+        
+        this.down('#field_box').add({
+            xtype:'container',
+            html:'<strong>Notes to Place on Target Defect</strong>'
         });
         
         var notes = this._constructTargetNotes(source_defect);
@@ -471,6 +491,18 @@ Ext.define('CustomApp', {
                             target_defect_hash.Workspace = workspace_hash;
                             target_defect_hash.Project = project_hash;
                             target_defect_hash.Notes = this.down('#notes_field').getValue();
+                            this.logger.log("New Owner: ", this.new_owner);
+                            if ( this.new_owner ) {
+                                var owner = this.new_owner;
+                                if ( owner.get('_ref') ) {
+                                    target_defect_hash.Owner = owner.get('_ref');
+                                } else {
+                                    delete target_defect_hash['Owner'];
+                                }
+                            }
+
+                            target_defect_hash.Notes = this.down('#notes_field').getValue();
+                            
                             
                             var new_defect = Ext.create(model, target_defect_hash);
                             new_defect.save({
