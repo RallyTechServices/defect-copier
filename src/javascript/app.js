@@ -177,10 +177,7 @@ Ext.define('CustomApp', {
     _copyDefect: function(defect_record, workspace_hash, project_hash ) {
         this.setLoading("Creating new defect...");
         this._logToScreen("Beginning copy");
-        this.logger.log("Notes value: ", this.down('#notes_field').getValue());
-        this.logger.log("Notes submit data: ", this.down('#notes_field').getSubmitData());
         
-        this.logger.log("Copying ", defect_record, " to ", workspace_hash, project_hash);
         // go get the full copy of the existing record, then clean it of unnecessary fields and
         // then copy it to the other place
         Rally.data.ModelFactory.getModel({
@@ -202,12 +199,14 @@ Ext.define('CustomApp', {
                                 callback: function(result, operation) {
                                     if(operation.wasSuccessful()) {
                                         this._logToScreen("Copy successful");
-                                        this.logger.log("Created ", result.get('FormattedID'), result);
                                         this.target_defect = result;
 
                                         this._updateSelectionDisplay();
                                         this.down('#copy_button').setDisabled(true);
 
+                                        this._addCreationDiscussionPost(full_source_defect,this.target_defect);
+
+                                                                                
                                         if ( full_source_defect.get('Attachments').Count > 0 ) {
                                             this._logToScreen("Found " + full_source_defect.get('Attachments').Count + " attachments");
                                             this._copyAttachmentsForDefect(model, full_source_defect, this.target_defect);
@@ -293,7 +292,6 @@ Ext.define('CustomApp', {
                     fetch: ['Content','ContentType','Description','Name','Size','Summary'],
                     callback: function(attachments, operation, success) {
                         me.setLoading("Copying Attachments");
-                        me.logger.log("Attachments: ", attachments);
                         var promises = [];
                         var number_of_items = attachments.length;
                         // slow down the creation a bit
@@ -326,14 +324,11 @@ Ext.define('CustomApp', {
                 });
             }
         });
-        
+        return;
     },
     _createAttachment: function(attachment_model,source_item,change_fields, me){
         var deferred = Ext.create('Deft.Deferred');
-        me.logger.log("Create Attachment ", attachment_model.getName() );
-        
-        console.log("App context: ", me.getContext());
-        
+                
         if ( ! source_item.get('Content') ) { 
             deferred.resolve([]);
         } else {
@@ -346,7 +341,6 @@ Ext.define('CustomApp', {
                     project: me.target_project.get('_ref')
                 },
                 success: function(ac_model) {
-                    console.log('models', ac_model, attachment_model);
                     
                     ac_model.load(content_oid,{
                         fetch: ['Content'],
@@ -370,7 +364,6 @@ Ext.define('CustomApp', {
                                         item['workspace'] = me.target_workspace._ref;
                                         item['project'] = me.target_project.get('_ref');
 
-                                        console.log('attachment: ', item);
                                         var record = Ext.create(attachment_model, item );
                                         me._logToScreen("Saving attachment");
                                         record.save({
@@ -427,5 +420,41 @@ Ext.define('CustomApp', {
         
         
         return Ext.Object.merge(item, change_fields);
+    },
+    _addCreationDiscussionPost: function(source_item,target_item){
+        var url = Rally.nav.Manager.getDetailUrl(target_item);
+        var link = "Copied this item to: <a href='" + url + "'>" + target_item.get('FormattedID') + "</a>";
+        var notes = link + " (in the workspace called " + this.target_workspace.Name + ")";
+        this._logToScreen("Adding copy information to discussion post");
+        this._addDiscussionPost(source_item,notes);
+        return;
+    },
+    _addDiscussionPost:function(artifact, text) {
+        this.logger.log("_addDiscussionPost",artifact,text);
+        var item = {
+            Artifact: { _ref: artifact.get('_ref') },
+            Text: text
+        };
+        
+        Rally.data.ModelFactory.getModel({
+            type: 'ConversationPost',
+            scope: this,
+            success: function(model) {
+                var record = Ext.create(model, item );
+                record.save({
+                    scope: this,
+                    callback: function(result, operation) {
+                        if(operation.wasSuccessful()) {
+                            this._logToScreen("Finished creating discussion post");
+                        } else {
+                           
+                            if ( operation.error.errors && operation.error.errors.length > 0 ) {
+                                this._logToScreen("Failed to create post:" +  operation.error.errors[0]);
+                            }
+                        }
+                    }
+                });
+            }
+        });
     }
-});
+}); 
