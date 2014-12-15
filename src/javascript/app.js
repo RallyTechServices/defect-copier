@@ -204,7 +204,7 @@ Ext.define('CustomApp', {
                                         this._updateSelectionDisplay();
                                         this.down('#copy_button').setDisabled(true);
 
-                                        this._addCreationDiscussionPost(full_source_defect,this.target_defect);
+                                        this._closeAndAddCreationDiscussionPost(full_source_defect,this.target_defect);
 
                                                                                 
                                         if ( full_source_defect.get('Attachments').Count > 0 ) {
@@ -421,13 +421,40 @@ Ext.define('CustomApp', {
         
         return Ext.Object.merge(item, change_fields);
     },
-    _addCreationDiscussionPost: function(source_item,target_item){
+    _closeAndAddCreationDiscussionPost: function(source_item,target_item){
         var url = Rally.nav.Manager.getDetailUrl(target_item);
         var link = "Copied this item to: <a href='" + url + "'>" + target_item.get('FormattedID') + "</a>";
         var notes = link + " (in the workspace called " + this.target_workspace.Name + ")";
         this._logToScreen("Adding copy information to discussion post");
-        this._addDiscussionPost(source_item,notes);
+        this._closeDefect(source_item).then({
+            scope: this,
+            success: function() {
+                this._addDiscussionPost(source_item,notes);
+            },
+            failure: function(msg) {
+                //
+            }
+        });
         return;
+    },
+    _closeDefect: function(source_item) {
+        var deferred = Ext.create('Deft.Deferred');
+        source_item.set('State','Closed');
+        source_item.save({
+            scope: this,
+            callback: function(result, operation) {
+                if(operation.wasSuccessful()) {
+                    this._logToScreen("Closed defect");
+                    deferred.resolve();
+                } else {
+                   
+                    if ( operation.error.errors && operation.error.errors.length > 0 ) {
+                        this._logToScreen("Failed to close defect:" +  operation.error.errors[0]);
+                    }
+                }
+            }
+        });
+        return deferred.promise;
     },
     _addDiscussionPost:function(artifact, text) {
         this.logger.log("_addDiscussionPost",artifact,text);
@@ -456,5 +483,6 @@ Ext.define('CustomApp', {
                 });
             }
         });
+        return;
     }
 }); 

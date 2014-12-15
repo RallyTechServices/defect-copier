@@ -3,10 +3,10 @@
 <head>
     <title>Defect Copier</title>
     <!--  (c) 2013 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Dec 14 2014 16:34:16 GMT-0800 (PST) -->
+    <!--  Build Date: Sun Dec 14 2014 16:43:05 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Dec 14 2014 16:34:16 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Sun Dec 14 2014 16:43:05 GMT-0800 (PST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
