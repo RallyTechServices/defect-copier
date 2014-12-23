@@ -46,11 +46,15 @@ Ext.define('CustomApp', {
     },
     _chooseDefect: function(button) {
         var height = this.getHeight() || 500;
+        var width = this.getWidth() || 300;
         
+        if ( width > 500 ) {
+            width = 500;
+        }
         if ( height > 550 ) {
             height = 550;
         }
-        this.logger.log("height", height);
+        this.logger.log("height, width", height, width);
         if ( height < 200 ) {
             alert("The app panel is not tall enough to allow for defect selection");
         } else {
@@ -58,6 +62,7 @@ Ext.define('CustomApp', {
                 artifactTypes: ['defect'],
                 autoShow: true,
                 title: 'Choose Defect',
+                width: width,
                 storeConfig: {
                     fetch: ['Notes']
                 },

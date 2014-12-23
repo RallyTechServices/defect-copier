@@ -3,11 +3,11 @@
 <head>
     <title>Defect Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Tue Dec 23 2014 12:26:24 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 23 2014 12:39:11 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Tue Dec 23 2014 12:26:24 GMT-0800 (PST)";
-        var CHECKSUM = 15318238640;
+        var APP_BUILD_DATE = "Tue Dec 23 2014 12:39:11 GMT-0800 (PST)";
+        var CHECKSUM = 15450899749;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -338,11 +338,15 @@ Ext.define('CustomApp', {
     },
     _chooseDefect: function(button) {
         var height = this.getHeight() || 500;
+        var width = this.getWidth() || 300;
         
+        if ( width > 500 ) {
+            width = 500;
+        }
         if ( height > 550 ) {
             height = 550;
         }
-        this.logger.log("height", height);
+        this.logger.log("height, width", height, width);
         if ( height < 200 ) {
             alert("The app panel is not tall enough to allow for defect selection");
         } else {
@@ -350,6 +354,7 @@ Ext.define('CustomApp', {
                 artifactTypes: ['defect'],
                 autoShow: true,
                 title: 'Choose Defect',
+                width: width,
                 storeConfig: {
                     fetch: ['Notes']
                 },
