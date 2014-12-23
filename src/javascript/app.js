@@ -504,11 +504,12 @@ Ext.define('CustomApp', {
         var url = Rally.nav.Manager.getDetailUrl(target_item);
         var link = "Copied this item to: <a href='" + url + "'>" + target_item.get('FormattedID') + "</a>";
         var notes = link + " (in the workspace called " + this.target_workspace.Name + ")";
-        this._logToScreen("Adding copy information to discussion post");
+        this._logToScreen("Adding copy information to note");
+
         this._closeDefect(source_item).then({
             scope: this,
             success: function() {
-                this._addDiscussionPost(source_item,notes);
+                this._addNoteToSource(source_item, notes);
             },
             failure: function(msg) {
                 //
@@ -534,6 +535,25 @@ Ext.define('CustomApp', {
             }
         });
         return deferred.promise;
+    },
+    _addNoteToSource: function(artifact, text) {
+        this.logger.log("_addNoteToSource",artifact,text);
+        var notes = artifact.get('Notes');
+        
+        artifact.set('Notes',text + notes);
+        artifact.save({
+            scope: this,
+            callback: function(result, operation) {
+                if(operation.wasSuccessful()) {
+                    this._logToScreen("Finished updating note on source");
+                } else {
+                   
+                    if ( operation.error.errors && operation.error.errors.length > 0 ) {
+                        this._logToScreen("Failed to update note on source:" +  operation.error.errors[0]);
+                    }
+                }
+            }
+        });
     },
     _addDiscussionPost:function(artifact, text) {
         this.logger.log("_addDiscussionPost",artifact,text);
