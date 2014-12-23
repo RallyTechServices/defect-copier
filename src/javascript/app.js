@@ -10,7 +10,7 @@ Ext.define('CustomApp', {
     new_owner: null,
     items: [
         {xtype:'container', itemId:'button_box', defaults: {margin: 5} },
-        {xtype:'container', layout: { type:'hbox' }, defaults: {margin: 25},  items: [
+        {xtype:'container', layout: { type:'hbox' }, defaults: {margin: 25}, width: 800, items: [
             {xtype:'container', itemId:'display_box', defaults: {margin: 5} },
             {xtype:'container', itemId:'input_box', height: 300, defaults: {margin: 5} }
         ]},
