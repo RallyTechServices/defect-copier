@@ -63,6 +63,16 @@ Ext.define('CustomApp', {
                 autoShow: true,
                 title: 'Choose Defect',
                 width: width,
+                filterableFields: [
+                    {
+                        displayName: 'Name',
+                        attributeName: 'Name'
+                    },
+                    {
+                        displayName: 'Formatted ID',
+                        attributeName: 'FormattedID'
+                    }
+                ],
                 storeConfig: {
                     fetch: ['Notes']
                 },
