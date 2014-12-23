@@ -9,7 +9,7 @@ Ext.define('CustomApp', {
     fields_to_replace: [],
     new_owner: null,
     items: [
-        {xtype:'container', itemId:'button_box', defaults: {margin: 5} },
+        {xtype:'container', itemId:'button_box', layout: { type:'hbox' }, defaults: {margin: 5} },
         {xtype:'container', layout: { type:'hbox' }, defaults: {margin: 25}, width: 800, items: [
             {xtype:'container', itemId:'display_box', defaults: {margin: 5} },
             {xtype:'container', itemId:'input_box', height: 300, defaults: {margin: 5} }
@@ -20,28 +20,47 @@ Ext.define('CustomApp', {
         {xtype:'tsinfolink'}
     ],
     launch: function() {
-        this._addButtons(this.down('#button_box'));
+        this._addSelectors(this.down('#button_box'));
     },
-    _addButtons: function(container) {
+    _addSelectors: function(container) {
         container.add({
-            xtype:'rallybutton',
-            text: 'Select Defect',
-            itemId: 'select_defect_button',
+            fieldLabel: 'Target Project',
+            labelWidth: 75,
+            labelAlign: 'top',
+            xtype:'rallyprojectpicker',
             listeners: {
                 scope: this,
-                click: this._chooseDefect
+                change: function(picker) {
+                    this.target_project = picker.getSelectedRecord();
+                    this.target_workspace = this.target_project.get('Workspace');
+                    this._updateSelectionDisplay();
+                    //me.selected_project = this.getSelectedRecord();
+                }
             }
         });
         
         container.add({
             xtype:'rallybutton',
-            text: 'Select Destination',
-            itemId: 'select_destination_button',
+            text: 'Choose Defect',
+            itemId: 'select_defect_button',
+            margin: '15 0 0 10',
             listeners: {
                 scope: this,
-                click: this._chooseTarget
+                click: this._chooseDefect
             }
         });
+                
+
+    
+//        container.add({
+//            xtype:'rallybutton',
+//            text: 'Select Destination',
+//            itemId: 'select_destination_button',
+//            listeners: {
+//                scope: this,
+//                click: this._chooseTarget
+//            }
+//        });
         
     },
     _chooseDefect: function(button) {
