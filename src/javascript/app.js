@@ -45,22 +45,35 @@ Ext.define('CustomApp', {
         
     },
     _chooseDefect: function(button) {
-        Ext.create('Rally.ui.dialog.ChooserDialog', {
-            artifactTypes: ['defect'],
-            autoShow: true,
-            title: 'Choose Defect',
-            storeConfig: {
-                fetch: ['Notes']
-            },
-            listeners: {
-                artifactChosen: function(selectedRecord){
-                    this.source_defect = selectedRecord;
-                    this.target_defect = null;
-                    this._updateSelectionDisplay();
+        var height = this.getHeight() || 500;
+        
+        if ( height > 550 ) {
+            height = 550;
+        }
+        this.logger.log("height", height);
+        if ( height < 200 ) {
+            alert("The app panel is not tall enough to allow for defect selection");
+        } else {
+            Ext.create('Rally.ui.dialog.ChooserDialog', {
+                artifactTypes: ['defect'],
+                autoShow: true,
+                title: 'Choose Defect',
+                storeConfig: {
+                    fetch: ['Notes']
                 },
-                scope: this
-            }
-         });
+                gridConfig: {
+                    height: height-100
+                },
+                listeners: {
+                    artifactChosen: function(selectedRecord){
+                        this.source_defect = selectedRecord;
+                        this.target_defect = null;
+                        this._updateSelectionDisplay();
+                    },
+                    scope: this
+                }
+             });
+        }
     },
     _chooseTarget: function(button) {
         Ext.create('Rally.technicalservices.dialog.ProjectChooserDialog', {

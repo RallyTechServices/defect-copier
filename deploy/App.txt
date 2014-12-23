@@ -3,11 +3,11 @@
 <head>
     <title>Defect Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Sun Dec 14 2014 18:45:55 GMT-0800 (PST) -->
+    <!--  Build Date: Tue Dec 23 2014 12:26:24 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Sun Dec 14 2014 18:45:55 GMT-0800 (PST)";
-        var CHECKSUM = 14729734815;
+        var APP_BUILD_DATE = "Tue Dec 23 2014 12:26:24 GMT-0800 (PST)";
+        var CHECKSUM = 15318238640;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -138,6 +138,19 @@ Ext.define('Rally.technicalservices.Logger',{
 
 });
 
+Ext.override(Rally.ui.dialog.ChooserDialog,{
+    items: {
+        xtype: 'panel',
+        border: false,
+        items: [
+            {
+                xtype: 'container',
+                itemId: 'gridContainer',
+                layout: 'fit'
+            }
+        ]
+    }
+});
 Ext.override(Rally.ui.tree.ProjectTree, {
     childItemsStoreConfigForParentRecordFn: function(record){
     
@@ -324,22 +337,35 @@ Ext.define('CustomApp', {
         
     },
     _chooseDefect: function(button) {
-        Ext.create('Rally.ui.dialog.ChooserDialog', {
-            artifactTypes: ['defect'],
-            autoShow: true,
-            title: 'Choose Defect',
-            storeConfig: {
-                fetch: ['Notes']
-            },
-            listeners: {
-                artifactChosen: function(selectedRecord){
-                    this.source_defect = selectedRecord;
-                    this.target_defect = null;
-                    this._updateSelectionDisplay();
+        var height = this.getHeight() || 500;
+        
+        if ( height > 550 ) {
+            height = 550;
+        }
+        this.logger.log("height", height);
+        if ( height < 200 ) {
+            alert("The app panel is not tall enough to allow for defect selection");
+        } else {
+            Ext.create('Rally.ui.dialog.ChooserDialog', {
+                artifactTypes: ['defect'],
+                autoShow: true,
+                title: 'Choose Defect',
+                storeConfig: {
+                    fetch: ['Notes']
                 },
-                scope: this
-            }
-         });
+                gridConfig: {
+                    height: height-100
+                },
+                listeners: {
+                    artifactChosen: function(selectedRecord){
+                        this.source_defect = selectedRecord;
+                        this.target_defect = null;
+                        this._updateSelectionDisplay();
+                    },
+                    scope: this
+                }
+             });
+        }
     },
     _chooseTarget: function(button) {
         Ext.create('Rally.technicalservices.dialog.ProjectChooserDialog', {
