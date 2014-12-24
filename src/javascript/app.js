@@ -229,7 +229,9 @@ Ext.define('CustomApp', {
                 scope: this,
                 click: function() {
                     this.fields_to_replace = [];
-                    this._copyDefect(this.source_defect, this.target_workspace, this.target_project.getData());
+                    this.save_messages = [];
+                    
+                    this._copyDefect(this.source_defect, this.target_workspace, this.target_project.getData(), 10);
                 }
             }
         });
@@ -241,9 +243,10 @@ Ext.define('CustomApp', {
         
         return link + "<br/>" + notes;
     },
-    _copyDefect: function(defect_record, workspace_hash, project_hash ) {
+    _copyDefect: function(defect_record, workspace_hash, project_hash, remaining_retries ) {
         this.setLoading("Creating new defect...");
         this._logToScreen("Beginning copy");
+        this.logger.log("Remaining Retries: ", remaining_retries);
         
         // go get the full copy of the existing record, then clean it of unnecessary fields and
         // then copy it to the other place
@@ -271,7 +274,6 @@ Ext.define('CustomApp', {
 
                             target_defect_hash.Notes = this.down('#notes_field').getValue();
                             
-                            
                             var new_defect = Ext.create(model, target_defect_hash);
                             new_defect.save({
                                 scope: this,
@@ -285,7 +287,6 @@ Ext.define('CustomApp', {
 
                                         this._closeAndAddCreationDiscussionPost(full_source_defect,this.target_defect);
 
-                                                                                
                                         if ( full_source_defect.get('Attachments').Count > 0 ) {
                                             this._logToScreen("Found " + full_source_defect.get('Attachments').Count + " attachments");
                                             this._copyAttachmentsForDefect(model, full_source_defect, this.target_defect);
@@ -298,7 +299,7 @@ Ext.define('CustomApp', {
                                         
                                         if ( operation.error && operation.error.errors ) {
                                             var errors = operation.error.errors;
-                                            this._processErrors(errors, defect_record, workspace_hash, project_hash);
+                                            this._processErrors(errors, defect_record, workspace_hash, project_hash, target_defect_hash, remaining_retries);
                                         }
                                     }
                                 }
@@ -310,29 +311,56 @@ Ext.define('CustomApp', {
         });
         
     },
-    _processErrors:function(errors, defect_record, workspace_hash, project_hash){
+    _processErrors:function(errors, defect_record, workspace_hash, project_hash, target_defect_hash, remaining_retries){
         var retry = false;
+        var messages = [];
+        
         Ext.Array.each(errors,function(error){
             this._logToScreen( error );
+            var message = null;
+            
             if ( /Owner cannot be set/.test(error) ) {
                 retry = true;
-                this._logToScreen("NOTE: Setting Owner to blank");
+                var old_value = target_defect_hash.Owner._refObjectName;
+                message = "NOTE: Set 'Owner' to blank (was " + old_value + ")";
+                
+                this._logToScreen(message);
                 this.fields_to_replace.push("Owner","");
             }
-            if ( /"Priority" must be a string/.test(error) ) {
+            
+            if ( /"State" must be a string/.test(error) ) {
                 retry = true;
-                this._logToScreen("NOTE: Setting Priority to blank");
-                this.fields_to_replace.push("Priority","");
+                var old_value = target_defect_hash.State;
+                message = "NOTE: Set 'State' to Open (was " + old_value + ")";
+                
+                this._logToScreen(message);
+                this.fields_to_replace.push("State","Open");
+            } else if ( /Could not convert: "ScheduleState" must be a string/.test(error) ) {
+                retry = true;
+                var old_value = target_defect_hash.ScheduleState;
+                message = "NOTE: Set 'Schedule State' to Defined (was " + old_value + ")";
+                
+                this._logToScreen(message);
+                this.fields_to_replace.push("ScheduleState","Defined");
+            } else if (/Could not convert/.test(error) ) {
+                var field_name = this._getFieldFromError(error);
+                if ( field_name ) {
+                    retry = true;
+                    var old_value = target_defect_hash[field_name];
+                    message = "NOTE: Set '" + field_name + "' to blank (was " + old_value + ")";
+                    
+                    this._logToScreen(message);
+                    this.fields_to_replace.push(field_name,"");
+                }
             }
-            if ( /"Severity" must be a string/.test(error) ) {
-                retry = true;
-                this._logToScreen("NOTE: Setting Severity to blank");
-                this.fields_to_replace.push("Severity","");
+            if ( message ) {
+                messages.push(message);
             }
         },this);
-        if ( retry ) {
+        if ( retry && remaining_retries > 0 ) {
             this._logToScreen("Trying to copy again");
-            this._copyDefect(defect_record, workspace_hash, project_hash );
+            Ext.Array.push(this.save_messages, messages);
+            this._copyDefect(defect_record, workspace_hash, project_hash, remaining_retries - 1 );
         } else {
             alert("cannot copy defect");
             this.setLoading(false);
@@ -502,14 +530,17 @@ Ext.define('CustomApp', {
     },
     _closeAndAddCreationDiscussionPost: function(source_item,target_item){
         var url = Rally.nav.Manager.getDetailUrl(target_item);
-        var link = "Copied this item to: <a href='" + url + "'>" + target_item.get('FormattedID') + "</a>";
-        var notes = link + " (in the workspace called " + this.target_workspace.Name + ")";
+        var link = "Copied this item to: <a href='" + url + "'>" + target_item.get('FormattedID') + "</a> ";
+        var notes = link + " (in the workspace called " + this.target_workspace.Name + ")<br/>";
         this._logToScreen("Adding copy information to note");
 
         this._closeDefect(source_item).then({
             scope: this,
             success: function() {
                 this._addNoteToSource(source_item, notes);
+                if ( this.save_messages ) {
+                    this._addDiscussionPost(target_item, "When copied made these changes:<br/>" + this.save_messages.join('<br/>'));
+                }
             },
             failure: function(msg) {
                 //
@@ -554,6 +585,17 @@ Ext.define('CustomApp', {
                 }
             }
         });
+    },
+    _getFieldFromError: function(error) {
+        var field_name = null;
+        // EXAMPLE: 
+        // Could not convert: "State" must be a string : Conversion method name : com.f4tech.slm.convert.DefectConversion.getStateNamed : value to convert : Fixed : type to convert : class com.f4tech.slm.domain.Rating : valid set is : (One,Open,Two,Closed)
+        var regular_expression = /Could not convert: "(.*?)"/;
+        var match = regular_expression.exec(error);
+        if ( match.length > 1 ) {
+            field_name = match[1];
+        }
+        return field_name;
     },
     _addDiscussionPost:function(artifact, text) {
         this.logger.log("_addDiscussionPost",artifact,text);
