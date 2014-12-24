@@ -73,7 +73,6 @@ Ext.define('CustomApp', {
         if ( height > 550 ) {
             height = 550;
         }
-        this.logger.log("height, width", height, width);
         if ( height < 200 ) {
             alert("The app panel is not tall enough to allow for defect selection");
         } else {
@@ -130,10 +129,6 @@ Ext.define('CustomApp', {
     _updateSelectionDisplay: function() {
         var container = this.down('#display_box');
         container.removeAll();
-        
-        this.logger.log( "Defect to Copy: ", this.source_defect);
-        this.logger.log( "Target Workspace: ",  this.target_workspace);
-        this.logger.log( "Target Project: ", this.target_project);
         
         var source_defect_display_string = "Defect Not Selected";
         if ( this.source_defect ) {
@@ -259,10 +254,12 @@ Ext.define('CustomApp', {
                     callback: function(full_source_defect, operation) {
                         if(operation.wasSuccessful()) {
                             var target_defect_hash = this._getHashFromRecord(full_source_defect);
+                            this.logger.log("The source defect was: ", full_source_defect);
+                            this.logger.log("The target defect hash: ", target_defect_hash);
                             target_defect_hash.Workspace = workspace_hash;
                             target_defect_hash.Project = project_hash;
                             target_defect_hash.Notes = this.down('#notes_field').getValue();
-                            this.logger.log("New Owner: ", this.new_owner);
+
                             if ( this.new_owner ) {
                                 var owner = this.new_owner;
                                 if ( owner.get('_ref') ) {
@@ -325,7 +322,7 @@ Ext.define('CustomApp', {
                 message = "NOTE: Set 'Owner' to blank (was " + old_value + ")";
                 
                 this._logToScreen(message);
-                this.fields_to_replace.push("Owner","");
+                this.fields_to_replace.push("Owner");
             }
             
             if ( /"State" must be a string/.test(error) ) {
@@ -334,23 +331,23 @@ Ext.define('CustomApp', {
                 message = "NOTE: Set 'State' to Open (was " + old_value + ")";
                 
                 this._logToScreen(message);
-                this.fields_to_replace.push("State","Open");
+                this.fields_to_replace.push("State");
             } else if ( /Could not convert: "ScheduleState" must be a string/.test(error) ) {
                 retry = true;
                 var old_value = target_defect_hash.ScheduleState;
                 message = "NOTE: Set 'Schedule State' to Defined (was " + old_value + ")";
                 
                 this._logToScreen(message);
-                this.fields_to_replace.push("ScheduleState","Defined");
-            } else if (/Could not convert/.test(error) ) {
+                this.fields_to_replace.push("ScheduleState");
+            } else if (/Could not convert/.test(error) || /an invalid value/.test(error) ) {
                 var field_name = this._getFieldFromError(error);
                 if ( field_name ) {
                     retry = true;
-                    var old_value = target_defect_hash[field_name];
+                    var old_value = this._getValueFromHash(target_defect_hash,field_name);
                     message = "NOTE: Set '" + field_name + "' to blank (was " + old_value + ")";
                     
                     this._logToScreen(message);
-                    this.fields_to_replace.push(field_name,"");
+                    this.fields_to_replace.push(field_name);
                 }
             }
             if ( message ) {
@@ -367,6 +364,23 @@ Ext.define('CustomApp', {
         }
         
     },
+    /*
+     * might be a custom field
+     */
+    _getValueFromHash: function(record_data,field_name){
+        this.logger.log("Looking for ", field_name, " in ", record_data);
+        var field_value = "";
+        if ( record_data[field_name] ) {
+            return record_data[field_name];
+        }
+        console.log('--');
+        Ext.Object.each(record_data,function(key,value){
+            if ( Ext.util.Format.lowercase(key) == Ext.util.Format.lowercase(field_name) || Ext.util.Format.lowercase(key) == "c_" + Ext.util.Format.lowercase(field_name) ) {
+                field_value = record_data[key];
+            }
+        });
+        return field_value;
+    },
     _getHashFromRecord: function(record) {
         var record_data = record.getData();
         var fields_to_remove = [ 'Project', 'ObjectID', 'CreationDate', 'OpenedDate', 
@@ -379,9 +393,14 @@ Ext.define('CustomApp', {
         });
         
         Ext.Array.each(this.fields_to_replace,function(field_to_replace) {
-            delete record_data[field_to_replace];
+            Ext.Object.each(record_data,function(key,value){
+                if ( Ext.util.Format.lowercase(key) == Ext.util.Format.lowercase(field_to_replace) || Ext.util.Format.lowercase(key) == "c_" + Ext.util.Format.lowercase(field_to_replace) ) {
+                    delete record_data[key];
+                }
+            });
         });
         
+        this.logger.log("Removing ", this.fields_to_replace, " from ", record_data);
         return record_data;
     },
     _copyAttachmentsForDefect: function(model, source_defect, target_defect){
@@ -475,7 +494,6 @@ Ext.define('CustomApp', {
                                         me._logToScreen("Saving attachment");
                                         record.save({
                                             callback: function(result, operation) {
-                                                me.logger.log(" -- Back from trying to create ", attachment_model.getName(), item['Name']);
                                                 if(operation.wasSuccessful()) {
                                                     deferred.resolve([source_item,result]);
                                                 } else {
@@ -592,8 +610,14 @@ Ext.define('CustomApp', {
         // Could not convert: "State" must be a string : Conversion method name : com.f4tech.slm.convert.DefectConversion.getStateNamed : value to convert : Fixed : type to convert : class com.f4tech.slm.domain.Rating : valid set is : (One,Open,Two,Closed)
         var regular_expression = /Could not convert: "(.*?)"/;
         var match = regular_expression.exec(error);
-        if ( match.length > 1 ) {
+        
+        var other_regular_expression = /Defect.(.*?) .*is an invalid value/;
+        var other_match = other_regular_expression.exec(error);
+        
+        if ( match && match.length > 1 ) {
             field_name = match[1];
+        } else if ( other_match && other_match.length > 1 ) {
+            field_name = other_match[1];
         }
         return field_name;
     },
