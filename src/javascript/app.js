@@ -150,7 +150,7 @@ Ext.define('CustomApp', {
             var target_id = this.target_defect.get('FormattedID');
             var target_name = this.target_defect.get('Name');
             
-            target_display_string = "<a href='" + target_url + "'>" + target_id + ":" + target_name + "</a>";
+            target_display_string = "<a href='" + target_url + "' target='_blank'>" + target_id + ":" + target_name + "</a>";
         }
         
         container.add({
