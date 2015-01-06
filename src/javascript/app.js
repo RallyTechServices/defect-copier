@@ -387,7 +387,8 @@ Ext.define('CustomApp', {
                 'Workspace', 'Project', 'Tags', 'Tasks', 'Duplicates', 'VersionId', 
                 '_ref','_refObjectName','_refObjectUUID','Blocker',
                 'ChangeSets', 'DefectSuites','Discussion','DragAndDropRank','LastUpdateDate',
-                'Milestones', 'RevisionHistory','TestCase','TestCaseResult','TestCaseStatus','TestCases'];
+                'Milestones', 'RevisionHistory','TestCase','TestCaseResult','TestCaseStatus',
+                'TestCases','Iteration','Release','Requirement'];
         Ext.Array.each(fields_to_remove,function(field_to_remove){
             record_data[field_to_remove] = null;
         });
