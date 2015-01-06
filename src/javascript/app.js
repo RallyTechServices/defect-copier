@@ -620,6 +620,10 @@ Ext.define('CustomApp', {
         } else if ( other_match && other_match.length > 1 ) {
             field_name = other_match[1];
         }
+        if ( field_name == "Category" ) {
+            field_name = "Package";
+        }
+        
         return field_name;
     },
     _addDiscussionPost:function(artifact, text) {
