@@ -28,6 +28,7 @@ Ext.define('CustomApp', {
             labelWidth: 75,
             labelAlign: 'top',
             xtype:'rallyprojectpicker',
+            showMostRecentlyUsedProjects: false,
             listeners: {
                 scope: this,
                 change: function(picker) {

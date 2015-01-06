@@ -3,11 +3,11 @@
 <head>
     <title>Defect Copier</title>
     <!--  (c) 2014 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Jan 05 2015 21:31:13 GMT-0800 (PST) -->
+    <!--  Build Date: Mon Jan 05 2015 21:34:41 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Jan 05 2015 21:31:13 GMT-0800 (PST)";
-        var CHECKSUM = 26339673070;
+        var APP_BUILD_DATE = "Mon Jan 05 2015 21:34:41 GMT-0800 (PST)";
+        var CHECKSUM = 26419197200;
     </script>
     
     <script type="text/javascript" src="/apps/2.0rc3/sdk.js"></script>
@@ -320,6 +320,7 @@ Ext.define('CustomApp', {
             labelWidth: 75,
             labelAlign: 'top',
             xtype:'rallyprojectpicker',
+            showMostRecentlyUsedProjects: false,
             listeners: {
                 scope: this,
                 change: function(picker) {
