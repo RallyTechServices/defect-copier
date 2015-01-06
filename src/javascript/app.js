@@ -280,6 +280,7 @@ Ext.define('CustomApp', {
                                         this.target_defect = result;
 
                                         this._updateSelectionDisplay();
+                                        
                                         this.down('#copy_button').setDisabled(true);
 
                                         this._closeAndAddCreationDiscussionPost(full_source_defect,this.target_defect);
@@ -307,6 +308,38 @@ Ext.define('CustomApp', {
             }
         });
         
+    },
+    _getDifference: function(full_source_defect,target_defect){
+        var differences = [];
+        var ignore_fields = [ 'Project', 'ObjectID', 'CreationDate', 'OpenedDate', 
+                '_objectVersion', '_CreatedAt', 'FormattedID', 'Notes', 'Subscription',
+                'Workspace', 'Project', 'Tags', 'Tasks', 'Duplicates', 'VersionId',
+                'Attachments','ClosedDate','TestCases',
+                '_ref','_refObjectName','_refObjectUUID','Blocker',
+                'Changesets', 'DefectSuites','Discussion','DragAndDropRank','LastUpdateDate',
+                'Milestones', 'RevisionHistory','TestCaseResult','TestCaseStatus'];
+        var source_hash = full_source_defect.getData();
+        Ext.Object.each( source_hash, function(key,value){
+            if (!Ext.Array.contains(ignore_fields,key)) {
+                if (!target_defect.get(key) && value && value !== {}){
+                    if ( value['_refObjectName']) {
+                        differences.push(key + " value removed. Was '" + value['_refObjectName'] + "'");
+                    } else {
+                        differences.push(key + " value removed. Was '" + value + "'");
+                    }
+                    
+                } else if(target_defect.get(key) !== value && value !== {} && value._refObjectName !== target_defect.get(key) ._refObjectName) {
+                    if ( value['_refObjectName']) {
+                        differences.push(key + " value changed. Was '" + value['_refObjectName'] + "'");
+                    } else {
+                        this.logger.log(value," doesn't have _refObjectName");
+                        differences.push(key + " value changed. Was '" + value + "'");
+                    }
+                }
+            }
+        },this);
+        this.logger.log("Found these differences:",differences);
+        return differences;
     },
     _processErrors:function(errors, defect_record, workspace_hash, project_hash, target_defect_hash, remaining_retries){
         var retry = false;
@@ -373,7 +406,6 @@ Ext.define('CustomApp', {
         if ( record_data[field_name] ) {
             return record_data[field_name];
         }
-        console.log('--');
         Ext.Object.each(record_data,function(key,value){
             if ( Ext.util.Format.lowercase(key) == Ext.util.Format.lowercase(field_name) || Ext.util.Format.lowercase(key) == "c_" + Ext.util.Format.lowercase(field_name) ) {
                 field_value = record_data[key];
@@ -384,8 +416,9 @@ Ext.define('CustomApp', {
     _getHashFromRecord: function(record) {
         var record_data = record.getData();
         var fields_to_remove = [ 'Project', 'ObjectID', 'CreationDate', 'OpenedDate', 
+                '_CreatedAt',
                 'Workspace', 'Project', 'Tags', 'Tasks', 'Duplicates', 'VersionId', 
-                '_ref','_refObjectName','_refObjectUUID','Blocker',
+                '_ref','_refObjectName','_refObjectUUID','Blocker', '_objectVersion',
                 'ChangeSets', 'DefectSuites','Discussion','DragAndDropRank','LastUpdateDate',
                 'Milestones', 'RevisionHistory','TestCase','TestCaseResult','TestCaseStatus',
                 'TestCases','Iteration','Release','Requirement'];
@@ -557,8 +590,9 @@ Ext.define('CustomApp', {
             scope: this,
             success: function() {
                 this._addNoteToSource(source_item, notes);
-                if ( this.save_messages ) {
-                    this._addDiscussionPost(target_item, "When copied made these changes:<br/>" + this.save_messages.join('<br/>'));
+                var diffs = this._getDifference(source_item,target_item);
+                if ( diffs.length > 0 ) {
+                    this._addDiscussionPost(target_item, "When copied made these changes:<br/>" + diffs.join('<br/>'));
                 }
             },
             failure: function(msg) {
