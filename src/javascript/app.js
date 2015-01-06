@@ -340,7 +340,7 @@ Ext.define('CustomApp', {
                 this._logToScreen(message);
                 this.fields_to_replace.push("ScheduleState");
             } else if (/Could not convert/.test(error) || /an invalid value/.test(error) ) {
-                var field_name = this._getFieldFromError(error);
+                var field_name = this._getFieldFromError(error,target_defect_hash);
                 if ( field_name ) {
                     retry = true;
                     var old_value = this._getValueFromHash(target_defect_hash,field_name);
@@ -605,20 +605,39 @@ Ext.define('CustomApp', {
             }
         });
     },
-    _getFieldFromError: function(error) {
+    _getFieldFromError: function(error,target_defect) {
+        this.logger.log("Error",error,"Target",target_defect);
+        
         var field_name = null;
         // EXAMPLE: 
         // Could not convert: "State" must be a string : Conversion method name : com.f4tech.slm.convert.DefectConversion.getStateNamed : value to convert : Fixed : type to convert : class com.f4tech.slm.domain.Rating : valid set is : (One,Open,Two,Closed)
         var regular_expression = /Could not convert: "(.*?)"/;
         var match = regular_expression.exec(error);
         
-        var other_regular_expression = /Defect.(.*?) .*is an invalid value/;
+        var other_regular_expression = /Defect.(.*?) is an invalid value/;
         var other_match = other_regular_expression.exec(error);
         
         if ( match && match.length > 1 ) {
             field_name = match[1];
         } else if ( other_match && other_match.length > 1 ) {
-            field_name = other_match[1];
+            var field_possibles = other_match[1].split(" ");
+            var test_name = "c_" + field_possibles[0];
+            this._logToScreen("Testing " + test_name);
+            if (target_defect[test_name] ) {
+                field_name = test_name;
+            } else {
+                test_name = "c_" + field_possibles[0] + field_possibles[1];
+                this._logToScreen("Testing " + test_name);
+                if ( field_possibles.length > 2 && target_defect[test_name]) {
+                    field_name = test_name;
+                } else if (field_possibles.length > 2) {
+                    test_name = "c_" + field_possibles[0] + field_possibles[1] + field_possibles[2];
+                    this._logToScreen("Testing " + test_name);
+                    if ( target_defect[test_name]) {
+                        field_name = test_name;
+                    } 
+                }
+            }
         }
         if ( field_name == "Category" ) {
             field_name = "Package";
