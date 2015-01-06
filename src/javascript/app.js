@@ -309,7 +309,8 @@ Ext.define('CustomApp', {
         });
         
     },
-    _getDifference: function(full_source_defect,target_defect){
+    _getDifference: function(full_source_defect,partial_target_defect){
+        var deferred = Ext.create('Deft.Deferred');
         var differences = [];
         var ignore_fields = [ 'Project', 'ObjectID', 'CreationDate', 'OpenedDate', 
                 '_objectVersion', '_CreatedAt', 'FormattedID', 'Notes', 'Subscription',
@@ -319,27 +320,44 @@ Ext.define('CustomApp', {
                 'Changesets', 'DefectSuites','Discussion','DragAndDropRank','LastUpdateDate',
                 'Milestones', 'RevisionHistory','TestCaseResult','TestCaseStatus'];
         var source_hash = full_source_defect.getData();
-        Ext.Object.each( source_hash, function(key,value){
-            if (!Ext.Array.contains(ignore_fields,key)) {
-                if (!target_defect.get(key) && value && value !== {}){
-                    if ( value['_refObjectName']) {
-                        differences.push(key + " value removed. Was '" + value['_refObjectName'] + "'");
-                    } else {
-                        differences.push(key + " value removed. Was '" + value + "'");
+        
+        Rally.data.ModelFactory.getModel({
+            type: 'Defect',
+            scope: this,
+            success: function(model) {
+                model.load(partial_target_defect.get('ObjectID'), {
+                    scope: this,
+                    callback: function(target_defect, operation) {
+                        Ext.Object.each( source_hash, function(key,value){
+                            this.logger.log(key,":",value);
+                            if (value && value !== {} && !Ext.Array.contains(ignore_fields,key) ) {
+                                this.logger.log(target_defect.get(key));
+                                if (!target_defect.get(key)){
+                                    if ( value['_refObjectName']) {
+                                        differences.push(key + " value removed. Was '" + value['_refObjectName'] + "'");
+                                    } else {
+                                        differences.push(key + " value removed. Was '" + value + "'");
+                                    }
+                                    
+                                } else if( ( !value._refObjectName && target_defect.get(key) !== value ) || value._refObjectName !== target_defect.get(key)._refObjectName) {
+                                    if ( value['_refObjectName']) {
+                                        differences.push(key + " value changed. Was '" + value['_refObjectName'] + "'");
+                                    } else {
+                                        this.logger.log(key, value," doesn't have _refObjectName");
+                                        differences.push(key + " value changed. Was '" + value + "'");
+                                    }
+                                }
+                            }
+                        },this);
+                                
+                        this.logger.log("Found these differences:",differences);
+                        deferred.resolve(differences);
                     }
-                    
-                } else if(target_defect.get(key) !== value && value !== {} && value._refObjectName !== target_defect.get(key) ._refObjectName) {
-                    if ( value['_refObjectName']) {
-                        differences.push(key + " value changed. Was '" + value['_refObjectName'] + "'");
-                    } else {
-                        this.logger.log(value," doesn't have _refObjectName");
-                        differences.push(key + " value changed. Was '" + value + "'");
-                    }
-                }
+                });
             }
-        },this);
-        this.logger.log("Found these differences:",differences);
-        return differences;
+        });
+        
+        return deferred.promise;
     },
     _processErrors:function(errors, defect_record, workspace_hash, project_hash, target_defect_hash, remaining_retries){
         var retry = false;
@@ -590,10 +608,16 @@ Ext.define('CustomApp', {
             scope: this,
             success: function() {
                 this._addNoteToSource(source_item, notes);
-                var diffs = this._getDifference(source_item,target_item);
-                if ( diffs.length > 0 ) {
-                    this._addDiscussionPost(target_item, "When copied made these changes:<br/>" + diffs.join('<br/>'));
-                }
+                this._getDifference(source_item,target_item).then({
+                    scope: this,
+                    success: function(diffs) {
+                        if ( diffs.length > 0 ) {
+                            this._addDiscussionPost(target_item, "When copied made these changes:<br/>" + diffs.join('<br/>'));
+                        }
+                    }
+                
+                });
+                
             },
             failure: function(msg) {
                 //
