@@ -6,7 +6,9 @@ Ext.define('CustomApp', {
     target_workspace: null,
     target_project: null,
     target_defect: null,
-    fields_to_replace: [],
+    fields_to_blank: [],
+    fields_to_default: [],
+    default_value: '--',
     new_owner: null,
     items: [
         {xtype:'container', itemId:'button_box', layout: { type:'hbox' }, defaults: {margin: 5} },
@@ -267,7 +269,9 @@ Ext.define('CustomApp', {
             listeners: {
                 scope: this,
                 click: function() {
-                    this.fields_to_replace = [];
+                    this.fields_to_blank = [];
+                    this.fields_to_default = [];
+                    
                     this.save_messages = [];
                     
                     this._copyDefect(this.source_defect, this.target_workspace, this.target_project.getData(), 10);
@@ -417,7 +421,7 @@ Ext.define('CustomApp', {
                 message = "NOTE: Set 'Owner' to blank (was " + old_value + ")";
                 
                 this._logToScreen(message);
-                this.fields_to_replace.push("Owner");
+                this.fields_to_blank.push("Owner");
             }
             
             if ( /"State" must be a string/.test(error) ) {
@@ -426,14 +430,14 @@ Ext.define('CustomApp', {
                 message = "NOTE: Set 'State' to Open (was " + old_value + ")";
                 
                 this._logToScreen(message);
-                this.fields_to_replace.push("State");
+                this.fields_to_blank.push("State");
             } else if ( /Could not convert: "ScheduleState" must be a string/.test(error) ) {
                 retry = true;
                 var old_value = target_defect_hash.ScheduleState;
                 message = "NOTE: Set 'Schedule State' to Defined (was " + old_value + ")";
                 
                 this._logToScreen(message);
-                this.fields_to_replace.push("ScheduleState");
+                this.fields_to_blank.push("ScheduleState");
             } else if (/Could not convert/.test(error) || /an invalid value/.test(error) ) {
                 var field_name = this._getFieldFromError(error,target_defect_hash);
                 if ( field_name ) {
@@ -442,8 +446,15 @@ Ext.define('CustomApp', {
                     message = "NOTE: Set '" + field_name + "' to blank (was " + old_value + ")";
                     
                     this._logToScreen(message);
-                    this.fields_to_replace.push(field_name);
+                    this.fields_to_blank.push(field_name);
                 }
+            } else if (/FoundInBuild should not be null/.test(error)) {
+                retry = true;
+                var field_name = 'FoundInBuild';
+                message = "NOTE: Set '" + field_name + "' to '" + this.default_value + "'";
+                this._logToScreen(message);
+
+                this.fields_to_default.push(field_name);
             }
             if ( message ) {
                 messages.push(message);
@@ -488,7 +499,9 @@ Ext.define('CustomApp', {
             record_data[field_to_remove] = null;
         });
         
-        Ext.Array.each(this.fields_to_replace,function(field_to_replace) {
+        this.logger.log("Removing ", this.fields_to_blank, " from ", record_data);
+
+        Ext.Array.each(this.fields_to_blank,function(field_to_replace) {
             Ext.Object.each(record_data,function(key,value){
                 if ( Ext.util.Format.lowercase(key) == Ext.util.Format.lowercase(field_to_replace) || Ext.util.Format.lowercase(key) == "c_" + Ext.util.Format.lowercase(field_to_replace) ) {
                     delete record_data[key];
@@ -496,7 +509,18 @@ Ext.define('CustomApp', {
             });
         });
         
-        this.logger.log("Removing ", this.fields_to_replace, " from ", record_data);
+        Ext.Array.each(this.fields_to_default,function(field_to_replace) {
+            var found = false;
+            Ext.Object.each(record_data,function(key,value){
+                if ( Ext.util.Format.lowercase(key) == Ext.util.Format.lowercase(field_to_replace) || Ext.util.Format.lowercase(key) == "c_" + Ext.util.Format.lowercase(field_to_replace) ) {
+                    record_data[key] = this.default_value;
+                    found = true;
+                }
+            },this);
+            if ( !found ) { record_data[field_to_replace] = this.default_value; }
+        },this);
+        this.logger.log("Replacing ", this.fields_to_default, " with ", this.default_value);
+
         return record_data;
     },
     _copyAttachmentsForDefect: function(model, source_defect, target_defect){
