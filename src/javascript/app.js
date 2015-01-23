@@ -11,7 +11,7 @@ Ext.define('CustomApp', {
     items: [
         {xtype:'container', itemId:'button_box', layout: { type:'hbox' }, defaults: {margin: 5} },
         {xtype:'container', layout: { type:'hbox' }, defaults: {margin: 25}, width: 800, items: [
-            {xtype:'container', itemId:'display_box', defaults: {margin: 5} },
+            {xtype:'container', itemId:'display_box', maxWidth: 400, defaults: {margin: 5} },
             {xtype:'container', itemId:'input_box', height: 300, defaults: {margin: 5} }
         ]},
         {xtype:'container', itemId:'log_box', defaults: {margin: 10}, height: 200, items: [
@@ -36,7 +36,62 @@ Ext.define('CustomApp', {
                     this.target_workspace = this.target_project.get('Workspace');
                     this._updateSelectionDisplay();
                     //me.selected_project = this.getSelectedRecord();
+                },
+                beforerender: function(picker) {
+                    if ( this && this.getHeight() && this.getHeight() < 500 ) {
+                        picker.picker_height = this.getHeight()-75;
+                        picker.tree = picker._createProjectTree();
+                    }
                 }
+            },
+            /* override to make picker smaller if necessary */
+            createPicker: function () {
+                var items = [];
+    
+                if (this.getShowMostRecentlyUsedProjects()) {
+                    this.recents = this._createMostRecentlyUsedProjects();
+                    items.push(this.recents);
+                }
+    
+                items.push(this.tree);
+    
+                if (this.getShowProjectScopeUpAndDown()) {
+                    this.projectScopeUpDownField = this._createProjectScopeUpDownField();
+                    items.push(this.projectScopeUpDownField);
+                }
+    
+                var picker_height = this.picker_height || 375;
+                this.picker = Ext.widget('container', {
+                    cls: 'rui-project-picker-container',
+                    itemId: 'projectPickerContainer',
+                    floating: true,
+                    shadow: false,
+                    hidden: true,
+                    minWidth: 250,
+                    height: picker_height,
+                    items: items
+                });
+    
+                return this.picker;
+            },
+
+            _createProjectTree: function () {
+
+                var picker_height = this.picker_height || 375;
+                return Ext.create('Rally.ui.tree.ProjectTree', {
+                    workspace: this.getWorkspace(),
+                    autoLoadTopLevel: false,
+                    height: picker_height,
+                    autoScroll: true,
+                    listeners: {
+                        scope: this,
+                        itemselected: this._treeItemSelected,
+                        toplevelload: function () {
+                            this.isLoaded = true;
+                            this.expand();
+                        }
+                    }
+                });
             }
         });
         
@@ -50,18 +105,6 @@ Ext.define('CustomApp', {
                 click: this._chooseDefect
             }
         });
-                
-
-    
-//        container.add({
-//            xtype:'rallybutton',
-//            text: 'Select Destination',
-//            itemId: 'select_destination_button',
-//            listeners: {
-//                scope: this,
-//                click: this._chooseTarget
-//            }
-//        });
         
     },
     _chooseDefect: function(button) {

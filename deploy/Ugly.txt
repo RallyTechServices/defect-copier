@@ -2,11 +2,11 @@
 <html>
 <head>
     <title>Defect Copier</title>
-    <!--  (c) 2013 Rally Software Development Corp.  All Rights Reserved. -->
-    <!--  Build Date: Mon Jan 05 2015 21:34:41 GMT-0800 (PST) -->
+    <!--  (c) 2014,2015 Rally Software Development Corp.  All Rights Reserved. -->
+    <!--  Build Date: Thu Jan 22 2015 18:21:10 GMT-0800 (PST) -->
     
     <script type="text/javascript">
-        var APP_BUILD_DATE = "Mon Jan 05 2015 21:34:41 GMT-0800 (PST)";
+        var APP_BUILD_DATE = "Thu Jan 22 2015 18:21:10 GMT-0800 (PST)";
         var CHECKSUM = [%= checksum %];
     </script>
     
@@ -41,6 +41,8 @@
     margin-right: 5px;
     cursor: pointer;
 }
+
+
     </style>
 
 </head>

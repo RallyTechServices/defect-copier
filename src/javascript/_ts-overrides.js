@@ -11,3 +11,4 @@ Ext.override(Rally.ui.dialog.ChooserDialog,{
         ]
     }
 });
+
