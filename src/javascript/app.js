@@ -171,6 +171,7 @@ Ext.define('CustomApp', {
     },
     _logToScreen: function(msg) {
         this.down('#log_box').add({xtype:'container',html:" -- " + msg});
+        this.logger.log("Logged to screen: ", msg);
     },
     _updateSelectionDisplay: function() {
         var container = this.down('#display_box');
@@ -325,6 +326,8 @@ Ext.define('CustomApp', {
                                 callback: function(result, operation) {
                                     if(operation.wasSuccessful()) {
                                         this._logToScreen("Copy successful");
+                                        this.logger.log("Successful result: ", result);
+                                        
                                         this.target_defect = result;
 
                                         this._updateSelectionDisplay();
@@ -591,6 +594,8 @@ Ext.define('CustomApp', {
                     ac_model.load(content_oid,{
                         fetch: ['Content'],
                         callback: function(result,operation) {
+                            me.logger.log('fetched content: ',result);
+                            
                             var content = result.get('Content');
                             
                             var copied_content = Ext.create(ac_model,{
